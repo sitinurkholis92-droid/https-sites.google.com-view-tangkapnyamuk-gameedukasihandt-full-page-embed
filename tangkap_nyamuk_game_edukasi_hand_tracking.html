@@ -1,0 +1,93 @@
+<!-- ... existing code ... -->
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts - Fredoka for Playful Vibe -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MediaPipe Hands CDN & Camera Utils with defer to ensure scripts load before execution -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+<!-- ... existing code ... -->
+            resizeCanvases();
+            window.addEventListener('resize', resizeCanvases);
+
+            setupEventListeners();
+            initMediaPipeHands();
+        });
+
+        function resizeCanvases() {
+<!-- ... existing code ... -->
+            document.getElementById('toggleSound').addEventListener('change', (e) => {
+                STATE.soundEnabled = e.target.checked;
+            });
+        }
+
+        // ==================== MEDIAPIPE HAND TRACKING ====================
+        function initMediaPipeHands() {
+            if (typeof Hands === 'undefined') {
+                console.warn('MediaPipe Hands library belum siap, mencoba lagi dalam 500ms...');
+                setTimeout(initMediaPipeHands, 500);
+                return;
+            }
+
+            try {
+                STATE.handsDetector = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+
+                STATE.handsDetector.setOptions({
+                    maxNumHands: 2,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+
+                STATE.handsDetector.onResults(onHandResults);
+            } catch (err) {
+                console.error('Gagal menginisialisasi MediaPipe Hands:', err);
+            }
+        }
+
+        function setupCamera() {
+            return new Promise((resolve, reject) => {
+                if (typeof Camera === 'undefined') {
+                    alert('Library kamera (Camera Utils) belum siap. Periksa koneksi internet Anda!');
+                    reject(new Error('Camera Utils undefined'));
+                    return;
+                }
+
+                if (STATE.cameraInstance) {
+                    resolve();
+                    return;
+                }
+
+                STATE.cameraInstance = new Camera(STATE.videoElement, {
+                    onFrame: async () => {
+                        if (STATE.videoElement && STATE.videoElement.readyState >= 2 && STATE.handsDetector) {
+                            const startTime = performance.now();
+                            await STATE.handsDetector.send({ image: STATE.videoElement });
+                            STATE.processingTime = Math.round(performance.now() - startTime);
+                        }
+                    },
+                    width: 640,
+                    height: 480
+                });
+
+                STATE.cameraInstance.start()
+                    .then(() => {
+                        document.getElementById('diagCamStatus').textContent = 'ACTIVE';
+                        resolve();
+                    })
+                    .catch((err) => {
+                        document.getElementById('diagCamStatus').textContent = 'ERROR';
+                        alert('Gagal mengakses kamera webcam. Izinkan akses kamera pada browser Anda!');
+                        reject(err);
+                    });
+            });
+        }
+
+        // Callback MediaPipe Real-Time
+        function onHandResults(results) {
+<!-- ... existing code ... -->
